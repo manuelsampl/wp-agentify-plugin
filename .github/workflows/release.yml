@@ -1,0 +1,34 @@
+name: Build & publish plugin zip
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 50 }
+      - name: Build zip + manifest
+        run: |
+          VER=$(grep -m1 "Version:" wp-agentify.php | sed 's/[^0-9.]*//g')
+          STAMP=$(date +%Y%m%d%H%M)
+          NAME="wp-agentify-${VER}-${STAMP}.zip"
+          mkdir -p out wp-agentify
+          rsync -a --exclude .git --exclude out --exclude .github ./ wp-agentify/
+          zip -rq "out/$NAME" wp-agentify
+          CHANGES=$(git log -10 --pretty=%s | sed 's/"/\\"/g' | sed 's/.*/"&"/' | paste -sd, -)
+          echo "{\"version\":\"$VER\",\"file\":\"$NAME\",\"date\":\"$(date -u +%FT%TZ)\",\"changelog\":[${CHANGES}]}" > out/entry.json
+          echo "ZIP=$NAME" >> $GITHUB_ENV
+      - name: Add SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id && chmod 600 ~/.ssh/id
+          ssh-keyscan -H "${{ vars.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+      - name: Upload + update manifest (keep 20)
+        run: |
+          D=${{ vars.API_PATH }}/public/downloads
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=accept-new "${{ vars.API_USER }}@${{ vars.VPS_HOST }}" "mkdir -p $D"
+          rsync -az -e "ssh -i ~/.ssh/id -o StrictHostKeyChecking=accept-new" out/$ZIP out/entry.json "${{ vars.API_USER }}@${{ vars.VPS_HOST }}:$D/"
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=accept-new "${{ vars.API_USER }}@${{ vars.VPS_HOST }}" "cd $D && python3 -c \"import json,glob,os; m=json.load(open('manifest.json')) if os.path.exists('manifest.json') else {'versions':[]}; e=json.load(open('entry.json')); m['versions']=[e]+m['versions']; m['versions']=m['versions'][:20]; keep={v['file'] for v in m['versions']}; [os.remove(z) for z in glob.glob('wp-agentify-*.zip') if z not in keep]; json.dump(m,open('manifest.json','w'))\" && rm -f entry.json"

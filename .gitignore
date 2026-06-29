@@ -1,0 +1,6 @@
+# keep built app assets (needed in zip); ignore dev cruft
+.DS_Store
+.idea
+.vscode
+node_modules
+*.log
