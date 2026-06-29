@@ -138,6 +138,17 @@ class Plugin {
 		if ( ! get_option( 'wpagentify_site_token' ) ) {
 			update_option( 'wpagentify_site_token', wp_generate_password( 40, false ), false );
 		}
+		// Push token + facts to the backend so the agent has live site context.
+		try {
+			$facts = ( new \WPAgentify\DB\Facts_Repository() )->all();
+			wp_remote_post( untrailingslashit( WPAGENTIFY_BACKEND_URL ) . '/api/site/handshake', array(
+				'timeout' => 15,
+				'headers' => array( 'Content-Type' => 'application/json' ),
+				'body'    => wp_json_encode( array( 'url' => home_url(), 'site_token' => get_option( 'wpagentify_site_token' ), 'facts' => $facts ) ),
+			) );
+		} catch ( \Throwable $e ) {
+			error_log( 'WP-AGENTIFY handshake failed: ' . $e->getMessage() );
+		}
 	}
 
 	/**
