@@ -11,6 +11,7 @@ use WPAgentify\Rest\Bootstrap_Controller;
 use WPAgentify\Rest\Facts_Controller;
 use WPAgentify\Rest\Conversations_Controller;
 use WPAgentify\Rest\Media_Controller;
+use WPAgentify\Rest\Tools_Controller;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -41,6 +42,7 @@ class Rest_Manager {
 			new Facts_Controller(),
 			new Conversations_Controller(),
 			new Media_Controller(),
+			new Tools_Controller(),
 		);
 
 		foreach ( $this->controllers as $controller ) {
