@@ -61,6 +61,7 @@ class Plugin {
 
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		add_action( 'admin_init', array( $this, 'ensure_analysis' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin' ) );
 		add_action( 'rest_api_init', array( $this->rest, 'register_routes' ) );
 		add_action( 'plugins_loaded', array( $this, 'maybe_upgrade_db' ) );
@@ -124,6 +125,30 @@ class Plugin {
 	 */
 	public function render_app() {
 		echo '<div id="wpagentify-root" class="wpagentify-root"></div>';
+	}
+
+	/**
+	 * Auto-analyze the site on first plugin load (and connect when first login
+	 * happens inside WordPress). Cheap once the facts are cached.
+	 *
+	 * @return void
+	 */
+	public function ensure_analysis() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		if ( ! get_option( 'wpagentify_last_analysis' ) ) {
+			try {
+				( new Site_Analyzer() )->analyze_and_store();
+			} catch ( \Throwable $e ) {
+				error_log( 'WP-AGENTIFY analysis failed: ' . $e->getMessage() );
+			}
+		}
+		// Auto-connect: register this site with the backend once. The SPA reads
+		// connected=true from /bootstrap and skips the connect onboarding step.
+		if ( ! get_option( 'wpagentify_site_token' ) ) {
+			update_option( 'wpagentify_site_token', wp_generate_password( 40, false ), false );
+		}
 	}
 
 	/**
