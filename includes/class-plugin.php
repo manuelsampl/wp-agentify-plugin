@@ -105,17 +105,6 @@ class Plugin {
 			'dashicons-superhero',
 			3
 		);
-
-		foreach ( array(
-			'dashboard' => __( 'Dashboard', 'wp-agentify' ),
-			'chat'      => __( 'Agent Chat', 'wp-agentify' ),
-			'support'   => __( 'Support', 'wp-agentify' ),
-			'users'     => __( 'Users', 'wp-agentify' ),
-			'billing'   => __( 'Billing', 'wp-agentify' ),
-			'settings'  => __( 'Settings', 'wp-agentify' ),
-		) as $route => $label ) {
-			add_submenu_page( 'wp-agentify', $label, $label, $cap, 'wp-agentify#/app/' . $route, array( $this, 'render_app' ) );
-		}
 	}
 
 	/**
